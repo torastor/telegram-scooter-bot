@@ -1,3 +1,4 @@
+import os
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -7,8 +8,15 @@ from telegram.ext import (
     ContextTypes
 )
 
-TOKEN = "8357035866:AAHIJdY2r0J-OY3I24W05Z__AaPFx_KKr0s"
+# ---------- НАСТРОЙКИ ----------
+TOKEN = os.getenv("BOT_TOKEN")  # Render Environment Variable
 
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO
+)
+
+# ---------- ДАННЫЕ ----------
 MODELS = [
     {
         "name": "Fududu A5",
@@ -48,6 +56,7 @@ MODELS = [
     }
 ]
 
+# ---------- ХЭНДЛЕРЫ ----------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("💰 До 40 000 ₽", callback_data="budget_40000")],
@@ -55,7 +64,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("💰 До 100 000 ₽", callback_data="budget_100000")]
     ]
     await update.message.reply_text(
-        "Привет! Я помогу подобрать электроскутер 🚲\nВыбери бюджет:",
+        "Привет! Я помогу подобрать электроскутер 🚲\n\nВыбери бюджет:",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
@@ -65,7 +74,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
 
     if data.startswith("budget"):
+        context.user_data.clear()
         context.user_data["budget"] = int(data.split("_")[1])
+
         keyboard = [
             [InlineKeyboardButton("🏙 Город", callback_data="place_город")],
             [InlineKeyboardButton("🌲 Бездорожье", callback_data="place_бездорожье")]
@@ -77,6 +88,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("place"):
         context.user_data["place"] = data.split("_")[1]
+
         keyboard = [
             [InlineKeyboardButton("25 км", callback_data="range_25")],
             [InlineKeyboardButton("40 км", callback_data="range_40")],
@@ -89,6 +101,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("range"):
         context.user_data["range"] = int(data.split("_")[1])
+
         keyboard = [
             [InlineKeyboardButton("До 100 кг", callback_data="weight_100")],
             [InlineKeyboardButton("До 150 кг", callback_data="weight_150")],
@@ -101,6 +114,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("weight"):
         context.user_data["weight"] = int(data.split("_")[1])
+
         keyboard = [
             [InlineKeyboardButton("Да", callback_data="folding_yes")],
             [InlineKeyboardButton("Нет", callback_data="folding_no")]
@@ -129,19 +143,23 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard = [[InlineKeyboardButton("🔎 Подробнее", url=result["link"])]]
             await query.message.reply_text(
                 f"✅ Подходящая модель:\n\n"
-                f"{result['name']}\n"
-                f"Цена: {result['price']} ₽\n"
-                f"Дальность: {result['range']} км\n"
-                f"Грузоподъёмность: {result['weight']} кг",
+                f"🚲 {result['name']}\n"
+                f"💰 Цена: {result['price']} ₽\n"
+                f"📏 Дальность: {result['range']} км\n"
+                f"⚖️ Грузоподъёмность: {result['weight']} кг",
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
         else:
             await query.message.reply_text(
-                "😕 К сожалению, точного совпадения не найдено.\n"
-                "Напишите менеджеру — мы подберём лучший вариант."
+                "😕 Точного совпадения не найдено.\n"
+                "Напишите менеджеру — подберём лучший вариант."
             )
 
+# ---------- ЗАПУСК ----------
 def main():
+    if not TOKEN:
+        raise RuntimeError("BOT_TOKEN не задан")
+
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(handle_callback))
@@ -149,4 +167,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
